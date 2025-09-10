@@ -3,19 +3,23 @@ const hamburger = document.querySelector('.hamburger');
 const navMenu = document.querySelector('.nav-menu');
 const navLinks = document.querySelectorAll('.nav-link');
 
-// Toggle mobile menu
-hamburger.addEventListener('click', () => {
-    hamburger.classList.toggle('active');
-    navMenu.classList.toggle('active');
-});
+// Toggle mobile menu - with null check
+if (hamburger && navMenu) {
+    hamburger.addEventListener('click', () => {
+        hamburger.classList.toggle('active');
+        navMenu.classList.toggle('active');
+    });
+}
 
 // Close mobile menu when clicking on a link
-navLinks.forEach(link => {
-    link.addEventListener('click', () => {
-        hamburger.classList.remove('active');
-        navMenu.classList.remove('active');
+if (hamburger && navMenu && navLinks) {
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            hamburger.classList.remove('active');
+            navMenu.classList.remove('active');
+        });
     });
-});
+}
 
 // Smooth scrolling for navigation links
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -114,10 +118,22 @@ function validateForm(data) {
 
 // Validate Kenyan phone number
 function isValidKenyanPhone(phone) {
-    // Remove spaces and check for Kenyan phone patterns
-    const cleanPhone = phone.replace(/\s/g, '');
-    const kenyanPhonePattern = /^(\+254|254|0)?[17]\d{8}$/;
-    return kenyanPhonePattern.test(cleanPhone);
+    // Remove all non-numeric characters except + at the beginning
+    const cleanPhone = phone.replace(/[^\d+]/g, '').replace(/\+(?!254)/g, '');
+    
+    // Kenyan phone patterns:
+    // +254712345678 (full international)
+    // 254712345678 (international without +)
+    // 0712345678 (local format)
+    // 712345678 (without leading 0)
+    const kenyanPhonePatterns = [
+        /^\+254[17]\d{8}$/, // +254712345678
+        /^254[17]\d{8}$/,   // 254712345678
+        /^0[17]\d{8}$/,     // 0712345678
+        /^[17]\d{8}$/       // 712345678
+    ];
+    
+    return kenyanPhonePatterns.some(pattern => pattern.test(cleanPhone));
 }
 
 // Validate email
@@ -149,7 +165,7 @@ function showNotification(message, type = 'info') {
         top: 20px;
         right: 20px;
         max-width: 400px;
-        background: ${type === 'success' ? '#27ae60' : type === 'error' ? '#e74c3c' : '#3498db'};
+        background: ${type === 'success' ? '#17a2b8' : type === 'error' ? '#dc3545' : '#2c5aa0'};
         color: white;
         padding: 1rem;
         border-radius: 8px;
@@ -234,13 +250,13 @@ scrollToTopBtn.style.cssText = `
     right: 30px;
     width: 50px;
     height: 50px;
-    background-color: #e74c3c;
+    background-color: #dc2626;
     color: white;
     border: none;
     border-radius: 50%;
     cursor: pointer;
     font-size: 1.2rem;
-    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
     transition: all 0.3s ease;
     opacity: 0;
     visibility: hidden;
@@ -294,20 +310,50 @@ document.addEventListener('DOMContentLoaded', () => {
 const phoneInput = document.getElementById('phone');
 if (phoneInput) {
     phoneInput.addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+        let value = e.target.value;
         
-        // If it doesn't start with 254 or +254, and has 9 or 10 digits, assume it's local
-        if (value.length === 9 && (value.startsWith('7') || value.startsWith('1'))) {
-            value = '254' + value;
-        } else if (value.length === 10 && value.startsWith('0')) {
-            value = '254' + value.substring(1);
+        // Handle pasting - only allow + at the beginning
+        value = value.replace(/[^\d+]/g, '').replace(/\+(?!254$|254\d)/g, '');
+        
+        // Remove all non-digits for processing
+        let digits = value.replace(/\D/g, '');
+        
+        // Auto-format based on input length and pattern
+        if (digits.length === 9 && (digits.startsWith('7') || digits.startsWith('1'))) {
+            // 712345678 -> +254712345678
+            e.target.value = `+254${digits}`;
+        } else if (digits.length === 10 && digits.startsWith('0')) {
+            // 0712345678 -> +254712345678
+            e.target.value = `+254${digits.substring(1)}`;
+        } else if (digits.length === 12 && digits.startsWith('254')) {
+            // 254712345678 -> +254712345678
+            e.target.value = `+${digits}`;
+        } else if (digits.length > 0 && digits.length <= 12) {
+            // Keep what user typed if it's a valid partial number
+            if (value.startsWith('+254')) {
+                e.target.value = value;
+            } else if (digits.startsWith('254')) {
+                e.target.value = `+${digits}`;
+            } else {
+                e.target.value = digits;
+            }
+        } else if (digits.length > 12) {
+            // Limit to 12 digits max
+            e.target.value = e.target.value.substring(0, e.target.value.length - 1);
         }
+    });
+    
+    phoneInput.addEventListener('blur', function(e) {
+        // Final cleanup on blur
+        let value = e.target.value.replace(/[^\d+]/g, '');
+        let digits = value.replace(/\D/g, '');
         
-        // Format with + prefix if it starts with 254
-        if (value.startsWith('254') && value.length === 12) {
-            e.target.value = '+' + value;
-        } else if (value.length <= 12) {
-            e.target.value = value.startsWith('254') ? '+' + value : value;
+        if (digits.length === 9 && (digits.startsWith('7') || digits.startsWith('1'))) {
+            e.target.value = `+254${digits}`;
+        } else if (digits.length === 10 && digits.startsWith('0')) {
+            e.target.value = `+254${digits.substring(1)}`;
+        } else if (digits.length === 12 && digits.startsWith('254')) {
+            e.target.value = `+${digits}`;
         }
     });
     
@@ -315,50 +361,40 @@ if (phoneInput) {
     phoneInput.placeholder = '+254 712 345 678';
 }
 
-// Dynamic pricing calculator (optional feature)
-function calculateTotalPrice() {
+// Service information display (optional feature)
+function displayServiceInfo() {
     const serviceSelect = document.getElementById('service');
     if (!serviceSelect) return;
     
-    const prices = {
-        'basic': 500,
-        'premium': 1200,
-        'deluxe': 2500,
-        'custom': 0
-    };
-    
     serviceSelect.addEventListener('change', function() {
         const selectedService = this.value;
-        const price = prices[selectedService];
         
-        // Show estimated price near the form
-        let priceDisplay = document.querySelector('.price-estimate');
-        if (!priceDisplay) {
-            priceDisplay = document.createElement('div');
-            priceDisplay.className = 'price-estimate';
-            priceDisplay.style.cssText = `
+        // Show service information near the form
+        let infoDisplay = document.querySelector('.service-info');
+        if (!infoDisplay) {
+            infoDisplay = document.createElement('div');
+            infoDisplay.className = 'service-info';
+            infoDisplay.style.cssText = `
                 margin-top: 1rem;
                 padding: 1rem;
-                background-color: #d5f4e6;
+                background-color: #d1ecf1;
                 border-radius: 8px;
-                color: #27ae60;
+                color: #17a2b8;
                 font-weight: 600;
             `;
-            this.parentNode.appendChild(priceDisplay);
+            this.parentNode.appendChild(infoDisplay);
         }
         
-        if (price > 0) {
-            priceDisplay.innerHTML = `<i class="fas fa-calculator"></i> Estimated Price: KES ${price.toLocaleString()}`;
-        } else if (selectedService === 'custom') {
-            priceDisplay.innerHTML = `<i class="fas fa-phone"></i> Call us for custom pricing: <a href="tel:+254712345678" style="color: #27ae60;">+254 712 345 678</a>`;
+        if (selectedService && selectedService !== '') {
+            infoDisplay.innerHTML = `<i class="fas fa-info-circle"></i> Contact us for pricing and availability: <a href="tel:+254712345678" style="color: #17a2b8;">+254 712 345 678</a>`;
         } else {
-            priceDisplay.innerHTML = '';
+            infoDisplay.innerHTML = '';
         }
     });
 }
 
-// Initialize pricing calculator
-document.addEventListener('DOMContentLoaded', calculateTotalPrice);
+// Initialize service info display
+document.addEventListener('DOMContentLoaded', displayServiceInfo);
 
 // Add loading state to buttons
 document.addEventListener('DOMContentLoaded', () => {
@@ -377,16 +413,41 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+// Hero Slideshow Functionality
+function initHeroSlideshow() {
+    const slides = document.querySelectorAll('.slide');
+    let currentSlide = 0;
+    
+    function showNextSlide() {
+        // Remove active class from current slide
+        slides[currentSlide].classList.remove('active');
+        
+        // Move to next slide
+        currentSlide = (currentSlide + 1) % slides.length;
+        
+        // Add active class to new slide
+        slides[currentSlide].classList.add('active');
+    }
+    
+    // Start slideshow - change slide every 3 seconds
+    if (slides.length > 0) {
+        setInterval(showNextSlide, 3000);
+    }
+}
+
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Log successful initialization
-    console.log('CleanRide Auto Wash website loaded successfully!');
+    console.log('BIJON Car Wash website loaded successfully!');
+    
+    // Initialize hero slideshow
+    initHeroSlideshow();
     
     // Add any additional initialization code here
     
     // Check if user has visited before
-    if (!localStorage.getItem('cleanride_visited')) {
-        localStorage.setItem('cleanride_visited', 'true');
+    if (!localStorage.getItem('bijon_visited')) {
+        localStorage.setItem('bijon_visited', 'true');
         // Could show a welcome message or first-time visitor modal here
     }
 });
