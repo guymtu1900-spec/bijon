@@ -438,13 +438,24 @@ function initHeroSlideshow() {
 // Initialize everything when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     // Log successful initialization
-    console.log('BIJON Car Wash website loaded successfully!');
-    
+    console.log('Bijon Cleaning Services website loaded successfully!');
+
     // Initialize hero slideshow
     initHeroSlideshow();
-    
+
+    // Carpet Washing image slideshow
+    const carpetImg = document.getElementById('carpet-wash-img');
+    if (carpetImg) {
+        const carpetImages = ['images/15.jpg', 'images/4.jpg', 'images/2.jpg'];
+        let idx = 0;
+        setInterval(() => {
+            idx = (idx + 1) % carpetImages.length;
+            carpetImg.src = carpetImages[idx];
+        }, 3000);
+    }
+
     // Add any additional initialization code here
-    
+
     // Check if user has visited before
     if (!localStorage.getItem('bijon_visited')) {
         localStorage.setItem('bijon_visited', 'true');
