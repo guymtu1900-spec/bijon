@@ -779,6 +779,17 @@ p {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    .slide {
+        background-size: cover !important;
+        background-position: center top !important;
+        min-height: 220px;
+    }
+    .hero {
+        min-height: 60vh;
+    }
+    .hero {
+        padding-top: 110px;
+    }
     .nav-menu {
         position: fixed;
         left: -100%;
